@@ -342,10 +342,17 @@
   }
 
   // Sonido suave sin archivos externos (Web Audio API)
+  // Reutilizamos un único AudioContext: los navegadores limitan cuántos
+  // se pueden crear (~6), así que crear uno nuevo en cada sesión hacía que
+  // el sonido dejara de funcionar tras varias sesiones.
+  let audioCtx = null;
   function beep() {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AC();
+      if (!AC) return;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      const ctx = audioCtx;
       const notes = [523.25, 659.25, 783.99]; // do-mi-sol
       notes.forEach(function (freq, i) {
         const osc = ctx.createOscillator();
