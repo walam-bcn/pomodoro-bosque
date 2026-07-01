@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌳 Pomodoro Bosque</title>
+<style>
+  :root {
+    --bg1: #0f2027;
+    --bg2: #203a43;
+    --bg3: #2c5364;
+    --accent: #7bd88f;
+    --accent-soft: #a8e6cf;
+    --break: #ffd97d;
+    --text: #eafaf1;
+    --panel: rgba(255,255,255,0.06);
+    --panel-border: rgba(255,255,255,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    color: var(--text);
+    background: linear-gradient(160deg, var(--bg1), var(--bg2), var(--bg3));
+    background-size: 200% 200%;
+    animation: bgShift 18s ease infinite;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 0;
+    overflow-x: hidden;
+    transition: filter 0.6s ease;
+  }
+  body.break-mode { --accent: var(--break); }
+  @keyframes bgShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .subtitle { opacity: 0.7; font-size: 0.9rem; margin-bottom: 22px; }
+
+  .timer-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 24px;
+    padding: 28px 34px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    text-align: center;
+    min-width: 320px;
+  }
+  .mode-label {
+    display: inline-block;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(123,216,143,0.18);
+    color: var(--accent);
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  .ring-wrap { position: relative; width: 220px; height: 220px; margin: 0 auto 18px; }
+  svg.ring { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 10; }
+  .ring-fg {
+    fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s linear, stroke 0.6s ease;
+  }
+  .time-display {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .controls { display: flex; gap: 12px; justify-content: center; margin-top: 6px; }
+  button {
+    font-family: inherit; font-size: 1rem; font-weight: 600;
+    border: none; border-radius: 14px; padding: 13px 26px;
+    cursor: pointer; transition: transform 0.12s ease, opacity 0.2s ease, background 0.2s;
+    color: #0f2027;
+  }
+  button:active { transform: scale(0.94); }
+  .btn-primary { background: var(--accent); }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-ghost { background: rgba(255,255,255,0.14); color: var(--text); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.22); }
+
+  .stats { display: flex; gap: 26px; justify-content: center; margin-top: 22px; }
+  .stat { text-align: center; }
+  .stat .num { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .stat .lbl { font-size: 0.72rem; opacity: 0.65; text-transform: uppercase; letter-spacing: 1px; }
+
+  .durations { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+  .durations label { font-size: 0.75rem; opacity: 0.7; display:flex; flex-direction:column; gap:4px; align-items:center; }
+  .durations input {
+    width: 60px; text-align: center; border-radius: 8px; border: 1px solid var(--panel-border);
+    background: rgba(0,0,0,0.2); color: var(--text); padding: 6px; font-family: inherit; font-size: 0.9rem;
+  }
+
+  /* Bosque */
+  .forest-section { width: 100%; max-width: 900px; margin-top: 26px; }
+  .forest-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 0 6px; }
+  .forest-header h2 { font-size: 1rem; font-weight: 600; opacity: 0.85; }
+  .forest {
+    position: relative;
+    min-height: 150px;
+    background: linear-gradient(to top, rgba(60,90,50,0.35), transparent);
+    border-radius: 20px 20px 0 0;
+    display: flex; align-items: flex-end; flex-wrap: wrap; gap: 2px;
+    padding: 12px 14px 0;
+    border-bottom: 4px solid rgba(90,60,40,0.5);
+    overflow: hidden;
+  }
+  .forest .empty-hint { opacity: 0.4; font-size: 0.85rem; padding: 40px 12px; width: 100%; text-align: center; }
+  .tree {
+    font-size: 2rem; line-height: 1;
+    animation: grow 0.9s cubic-bezier(0.34,1.56,0.64,1) both;
+    transform-origin: bottom center;
+    cursor: default; user-select: none;
+  }
+  @keyframes grow {
+    0% { transform: scale(0) translateY(10px); opacity: 0; }
+    60% { transform: scale(1.25) translateY(0); }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(120%);
+    background: var(--accent); color: #0f2027; padding: 14px 24px; border-radius: 14px;
+    font-weight: 600; box-shadow: 0 8px 30px rgba(0,0,0,0.35); transition: transform 0.45s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 50;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  footer { margin: 28px 0 16px; opacity: 0.4; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+  <h1>🌳 Pomodoro Bosque</h1>
+  <p class="subtitle">Concéntrate. Cada sesión completada planta un árbol.</p>
+
+  <div class="timer-card">
+    <span class="mode-label" id="modeLabel">Enfoque</span>
+    <div class="ring-wrap">
+      <svg class="ring" width="220" height="220" viewBox="0 0 220 220">
+        <circle class="ring-bg" cx="110" cy="110" r="100"></circle>
+        <circle class="ring-fg" id="ringFg" cx="110" cy="110" r="100"></circle>
+      </svg>
+      <div class="time-display" id="timeDisplay">25:00</div>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="startBtn">Iniciar</button>
+      <button class="btn-ghost" id="resetBtn">Reiniciar</button>
+    </div>
+
+    <div class="durations">
+      <label>Enfoque (min)
+        <input type="number" id="focusMin" value="25" min="1" max="90">
+      </label>
+      <label>Descanso (min)
+        <input type="number" id="breakMin" value="5" min="1" max="30">
+      </label>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="num" id="sessionCount">0</div><div class="lbl">Sesiones</div></div>
+      <div class="stat"><div class="num" id="minutesCount">0</div><div class="lbl">Minutos</div></div>
+      <div class="stat"><div class="num" id="treeCount">0</div><div class="lbl">Árboles</div></div>
+    </div>
+  </div>
+
+  <section class="forest-section">
+    <div class="forest-header">
+      <h2>Tu bosque de hoy</h2>
+      <button class="btn-ghost" id="clearForest" style="padding:6px 14px;font-size:0.8rem;">Limpiar</button>
+    </div>
+    <div class="forest" id="forest">
+      <span class="empty-hint">Aún no hay árboles. Completa tu primera sesión para plantar uno 🌱</span>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+  <footer>Hecho con 💚 · Pomodoro Bosque · Guardado localmente en tu navegador</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  const RADIUS = 100;
+  const CIRC = 2 * Math.PI * RADIUS;
+  const TREES = ["🌳","🌲","🌴","🎄","🌵","🍀"];
+
+  const el = {
+    time: document.getElementById("timeDisplay"),
+    ring: document.getElementById("ringFg"),
+    start: document.getElementById("startBtn"),
+    reset: document.getElementById("resetBtn"),
+    mode: document.getElementById("modeLabel"),
+    focusMin: document.getElementById("focusMin"),
+    breakMin: document.getElementById("breakMin"),
+    sessions: document.getElementById("sessionCount"),
+    minutes: document.getElementById("minutesCount"),
+    trees: document.getElementById("treeCount"),
+    forest: document.getElementById("forest"),
+    clear: document.getElementById("clearForest"),
+    toast: document.getElementById("toast"),
+  };
+
+  el.ring.style.strokeDasharray = CIRC;
+  el.ring.style.strokeDashoffset = 0;
+
+  let mode = "focus";          // "focus" | "break"
+  let running = false;
+  let remaining = 25 * 60;     // seconds
+  let total = 25 * 60;
+  let tickId = null;
+
+  const state = load();
+  render();
+
+  function load() {
+    try {
+      const raw = localStorage.getItem("pomodoroBosque");
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { sessions: 0, minutes: 0, forest: [] };
+  }
+  function save() {
+    try { localStorage.setItem("pomodoroBosque", JSON.stringify(state)); } catch (e) {}
+  }
+
+  function focusSeconds() { return clampInt(el.focusMin.value, 1, 90) * 60; }
+  function breakSeconds() { return clampInt(el.breakMin.value, 1, 30) * 60; }
+  function clampInt(v, lo, hi) {
+    let n = parseInt(v, 10);
+    if (isNaN(n)) n = lo;
+    return Math.max(lo, Math.min(hi, n));
+  }
+
+  function fmt(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+  }
+
+  function updateDisplay() {
+    el.time.textContent = fmt(remaining);
+    const frac = total > 0 ? remaining / total : 0;
+    el.ring.style.strokeDashoffset = CIRC * (1 - frac);
+    document.title = (running ? (mode === "focus" ? "🌱 " : "☕ ") : "🌳 ") + fmt(remaining) + " · Pomodoro Bosque";
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    if (mode === "focus") {
+      document.body.classList.remove("break-mode");
+      el.mode.textContent = "Enfoque";
+      total = remaining = focusSeconds();
+    } else {
+      document.body.classList.add("break-mode");
+      el.mode.textContent = "Descanso";
+      total = remaining = breakSeconds();
+    }
+    updateDisplay();
+  }
+
+  function start() {
+    if (running) { pause(); return; }
+    running = true;
+    el.start.textContent = "Pausar";
+    tickId = setInterval(tick, 1000);
+  }
+  function pause() {
+    running = false;
+    el.start.textContent = "Reanudar";
+    clearInterval(tickId);
+    updateDisplay();
+  }
+  function reset() {
+    running = false;
+    clearInterval(tickId);
+    el.start.textContent = "Iniciar";
+    setMode(mode);
+  }
+
+  function tick() {
+    remaining--;
+    if (remaining <= 0) {
+      remaining = 0;
+      updateDisplay();
+      complete();
+      return;
+    }
+    updateDisplay();
+  }
+
+  function complete() {
+    clearInterval(tickId);
+    running = false;
+    el.start.textContent = "Iniciar";
+    beep();
+
+    if (mode === "focus") {
+      const mins = Math.round(focusSeconds() / 60);
+      state.sessions += 1;
+      state.minutes += mins;
+      const tree = TREES[Math.floor(Math.random() * TREES.length)];
+      state.forest.push(tree);
+      save();
+      render();
+      showToast("🌳 ¡Árbol plantado! Buen trabajo. Toca un descanso.");
+      setMode("break");
+    } else {
+      showToast("☕ Descanso terminado. ¿List@ para otra sesión?");
+      setMode("focus");
+    }
+  }
+
+  function render() {
+    el.sessions.textContent = state.sessions;
+    el.minutes.textContent = state.minutes;
+    el.trees.textContent = state.forest.length;
+    if (state.forest.length === 0) {
+      el.forest.innerHTML = '<span class="empty-hint">Aún no hay árboles. Completa tu primera sesión para plantar uno 🌱</span>';
+    } else {
+      el.forest.innerHTML = "";
+      state.forest.forEach(function (t) {
+        const span = document.createElement("span");
+        span.className = "tree";
+        span.textContent = t;
+        el.forest.appendChild(span);
+      });
+    }
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    el.toast.textContent = msg;
+    el.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.classList.remove("show"); }, 3600);
+  }
+
+  // Sonido suave sin archivos externos (Web Audio API)
+  function beep() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AC();
+      const notes = [523.25, 659.25, 783.99]; // do-mi-sol
+      notes.forEach(function (freq, i) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.16;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.25, t + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.55);
+      });
+    } catch (e) {}
+  }
+
+  // Eventos
+  el.start.addEventListener("click", start);
+  el.reset.addEventListener("click", reset);
+  el.clear.addEventListener("click", function () {
+    if (confirm("¿Talar el bosque de hoy? Esto borra árboles, sesiones y minutos.")) {
+      state.sessions = 0; state.minutes = 0; state.forest = [];
+      save(); render();
+    }
+  });
+  el.focusMin.addEventListener("change", function () { if (!running && mode === "focus") setMode("focus"); });
+  el.breakMin.addEventListener("change", function () { if (!running && mode === "break") setMode("break"); });
+
+  // Barra espaciadora = iniciar/pausar
+  document.addEventListener("keydown", function (e) {
+    if (e.code === "Space" && e.target.tagName !== "INPUT") { e.preventDefault(); start(); }
+  });
+
+  setMode("focus");
+})();
+</script>
+</body>
+</html>
